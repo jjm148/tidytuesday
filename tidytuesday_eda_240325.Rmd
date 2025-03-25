@@ -1,0 +1,74 @@
+---
+title: "tidytuesday_250325_EDA"
+author: "JM"
+date: "2025-03-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load libraries
+
+```{r}
+library(tidyverse)
+library(RColorBrewer)
+```
+
+```{r}
+# Option 2: Read directly from GitHub
+
+report_words_clean <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-03-25/report_words_clean.csv')
+
+```
+
+```{r}
+df <- report_words_clean
+```
+
+
+```{r}
+# Quickly explore data
+head(df)
+summary(df)
+glimpse(df)
+```
+
+How have the words used change over time
+
+```{r}
+# What are the most used word per year
+annual_topwords <- df %>%
+  group_by(year, word) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  arrange(year, desc(Count)) %>%
+  group_by(year) %>%
+  slice_max(Count, n = 5, with_ties = FALSE) %>%
+  ungroup() %>%
+  mutate(word = fct_reorder(word, Count, .fun = "sum", .desc = TRUE))
+
+annual_topwords
+```
+
+```{r}
+# Using the Set3 palette from RColorBrewer
+colors <- brewer.pal(12, "Set3")
+
+# Plot  
+ggplot(annual_topwords, aes(x = factor(year), y = Count, fill = word)) +
+  geom_col() +
+  geom_text(aes(label = word), position = position_stack(vjust = 0.5), size = 3) +
+  scale_fill_manual(values = colors) +
+  labs(x = NULL, y = NULL, title = "From Millions to Billions - Top 5 Most Used Words in Amazon Annual Reports") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none") +
+  coord_flip()
+```
+
+```{r}
+ggsave("C:/Users/julia/Desktop/Building Analytics/viz/tidytue_250325_amazon.png", dpi = 300)
+```
+
+
