@@ -1,0 +1,138 @@
+---
+title: "Tidy Tuesday Pokemon"
+author: "JM"
+date: "2025-04-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+# Option 2: Read directly from GitHub
+
+pokemon_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-04-01/pokemon_df.csv')
+```
+
+```{r}
+head(pokemon_df)
+```
+
+```{r}
+stats <- pokemon_df %>%
+  select(
+    pokemon,
+    hp,
+    attack,
+    defense,
+    special_attack,
+    special_defense,
+    speed
+  )
+
+head(stats)
+```
+
+```{r}
+# Preprocess by pivot longer befor viz
+stats_long <- stats %>%
+  pivot_longer(cols = hp:speed, names_to = "stat", values_to = "value")
+
+head(stats_long)
+```
+
+create radar chart for starters
+
+```{r}
+# Initialise list for starters
+# Gen 1 to 7
+gen1_starters <- c("bulbasaur", "charmander", "squirtle")
+gen2_starters <- c("chikorita", "cyndaquil", "totodile")
+gen3_starters <- c("treecko", "torchic", "mudkip")
+gen4_starters <- c("turtwig", "chimchar", "piplup")
+gen5_starters <- c("snivy", "tepig", "oshawott")
+gen6_starters <- c("chespin", "fennekin", "froakie")
+gen7_starters <- c("rowlet", "litten", "popplio")
+
+```
+
+```{r}
+# Put lists into single list so we can map next steps
+gen_starters <- list(
+  gen1 = gen1_starters,
+  gen2 = gen2_starters,
+  gen3 = gen3_starters,
+  gen4 = gen4_starters,
+  gen5 = gen5_starters,
+  gen6 = gen6_starters,
+  gen7 = gen7_starters
+)
+```
+
+```{r}
+# Select stat columns
+starter_stats <- map(gen_starters, ~ {
+  pokemon_df %>%
+    filter(pokemon %in% .x) %>%
+    select(pokemon,
+    hp,
+    attack,
+    defense,
+    special_attack,
+    special_defense,
+    speed)
+})
+
+starter_stats
+```
+
+```{r}
+# Pivot longer for visualisation
+starter_stats_long <- map(starter_stats, ~ {
+  .x %>%
+    pivot_longer(cols = hp:speed, names_to = "stat", values_to = "value")
+})
+
+starter_stats_long
+```
+
+```{r}
+plot_starter_stats <- imap(starter_stats_long, ~ {
+   ggplot(.x, aes(x = stat, y = value, fill = stat)) +
+    geom_bar(stat = "identity", show.legend = TRUE) +
+    coord_polar(start = 0) +
+    theme_minimal() +
+    theme(axis.text.x = element_blank(),
+          axis.text.y = element_blank(),
+          plot.margin = margin(10, 10, 10, 10),
+          legend.position = "bottom",
+          legend.text = element_text(size = 8),
+          legend.title = element_blank(),
+          legend.key.size = unit(0.5, "cm"),
+          legend.margin = margin(t = 10),
+          strip.text = element_text(size = 10),
+          panel.spacing = unit(1, "lines")) +
+    labs(x = NULL, y = NULL, title = paste0("Gen ", gsub("gen", "", .y), " Starter Stats")) +
+    facet_wrap(~pokemon, scales = "free", ncol = 3)
+})
+
+plot_starter_stats
+```
+
+```{r}
+# Save each plot as png
+imap(plot_starter_stats, ~ {
+  ggsave(filename = paste0("gen", gsub("gen", "", .y), "_starter_stats.png"),
+         plot = .x, width = 8, height = 6, dpi = 300, bg = "white")
+})
+```
+
+
+
+
+
