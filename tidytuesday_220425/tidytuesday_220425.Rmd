@@ -1,0 +1,104 @@
+---
+title: "tidy tuesday"
+author: "JM"
+date: "2025-04-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggtext)
+```
+
+```{r}
+# Option 2: Read directly from GitHub
+
+daily_accidents <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-04-22/daily_accidents.csv')
+daily_accidents_420 <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-04-22/daily_accidents_420.csv')
+
+```
+
+```{r}
+head(daily_accidents)
+summary(daily_accidents)
+```
+
+```{r}
+head(daily_accidents_420)
+summary(daily_accidents_420)
+```
+
+```{r}
+# Filter April 20 dates
+april_20 <- daily_accidents %>%
+  filter(month(date) == 4) %>%
+  mutate(Day = day(date), Year = year(date))
+
+head(april_20)
+```
+
+```{r}
+ggplot(april_20, aes(x = factor(Day), y = factor(Year), fill = fatalities_count)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_b() +
+  theme_minimal() +
+  labs(x = NULL, y = NULL, title = NULL)
+```
+
+```{r}
+# Try investigating how 20 compares to the mean of that year
+# Yearly average
+mean_fatalities <- daily_accidents %>%
+  mutate(Year = year(date)) %>%
+  group_by(Year) %>%
+  summarise(mean_fatalities = mean(fatalities_count))
+
+head(mean_fatalities)
+```
+
+```{r}
+# Join with april_20
+combined_df <- april_20 %>%
+  left_join(mean_fatalities, by = "Year")
+
+head(combined_df)
+```
+
+```{r}
+comparison_df <- combined_df %>%
+  mutate(fatality_ratio = fatalities_count/mean_fatalities)
+
+head(comparison_df)
+```
+
+```{r}
+ggplot(comparison_df, aes(x = factor(Day), y = factor(Year), fill = fatality_ratio)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(
+    low = "#66C2A5", mid = "white", high = "#FC8D62",
+    midpoint = 1, name = "Fatality Ratio"
+  ) +
+  scale_x_discrete(
+    labels = function(x) {
+      ifelse(x == "20", "<b style='color:black;'>20</b>", x)
+    }
+  ) +
+  theme_minimal() +
+  labs(x = "April", y = NULL, title = "Is 4/20 More Deadly?", subtitle = "Daily fatality ratios from April 1–30 compared to the yearly mean (1992–2016)") +
+  theme(
+  plot.title = element_text(size = 16, face = "bold"),
+  plot.subtitle = element_text(size = 10, margin = margin(b = 10), face = "italic"),
+    axis.text.x = ggtext::element_markdown(size = 9)
+) 
+
+```
+
+
+```{r}
+ggsave("fatalities_heatmap.png", width = 8, height = 6, dpi = 300, bg = "white")
+```
+
