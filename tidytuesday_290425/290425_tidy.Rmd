@@ -1,0 +1,82 @@
+---
+title: "Highest tf-idf words in each room"
+author: "JM"
+date: "2025-04-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidytext)
+library(forcats)
+```
+
+```{r}
+# Option 2: Read directly from GitHub
+
+user2025 <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-04-29/user2025.csv')
+```
+
+```{r}
+glimpse(user2025)
+summary(user2025)
+head(user2025)
+```
+
+Follow ch3 of Julia Silges Text Mining Book
+
+```{r}
+content_words <- user2025 %>%
+  unnest_tokens(word, content) %>%
+  count(room, word, sort = TRUE)
+
+head(content_words)
+```
+
+```{r}
+total_words <- content_words %>%
+  group_by(room) %>%
+  summarise(total = sum(n))
+
+head(total_words)
+```
+
+```{r}
+content_tf_idf <- content_words %>%
+  bind_tf_idf(word, room, n)
+
+head(content_tf_idf)
+```
+
+```{r}
+content_tf_idf %>%
+  arrange(desc(tf_idf))
+```
+
+```{r}
+content_tf_idf %>%
+  group_by(room) %>%
+  slice_max(tf_idf, n = 10) %>%
+  ungroup() %>%
+  ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = room)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~room, ncol = 2, scales = "free") +
+  labs(x = "tf-idf", y = NULL)
+```
+
+```{r}
+ggsave("useR2025_cols.png", width = 8, height = 10, dpi = 300, bg = "white")
+```
+
+
+
+
+
+
+
+
+
