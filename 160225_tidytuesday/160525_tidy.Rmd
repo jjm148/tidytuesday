@@ -1,0 +1,156 @@
+---
+title: "This weeks tidy tuesday markdown"
+output: html_document
+date: "2025-05-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(hms)
+```
+
+
+```{r}
+# Option 2: Read directly from GitHub
+
+vesuvius <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-05-13/vesuvius.csv')
+```
+
+```{r}
+head(vesuvius)
+```
+
+```{r}
+summary(vesuvius)
+```
+
+```{r}
+cor_coef <- cor(vesuvius$duration_magnitude_md, vesuvius$depth_km, use = "complete.obs")
+
+cor_coef
+```
+Is there a correlation between eq depth and magnitude?
+
+```{r}
+ggplot(vesuvius, aes(x = vesuvius$duration_magnitude_md, y = vesuvius$depth_km)) +
+  geom_point(alpha = 0.6, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red", linetype = "dashed") +
+  labs(title = "Correlation Between EQ Depth & Magnitude", x = "Depth (km)", y = "Magnitude") +
+  theme_minimal()
+```
+
+Do seismic events at Vesuvius follow any seasonal patterns or time-of-day patterns?
+
+Use lubridate methods
+
+Aggregate hourly, group by hour of day, then get mean/median
+
+
+```{r}
+head(vesuvius)
+```
+
+```{r}
+time_depth <- vesuvius %>%
+  select(time, depth_km) %>%
+  mutate(time_of_day = round_date(time, unit = "hour")) %>%
+  mutate(time_of_day = as_hms(time_of_day)) %>%
+  group_by(time_of_day) %>%
+  summarise(mean_depth = mean(depth_km, na.rm = TRUE))
+
+head(time_depth)
+```
+
+```{r}
+ggplot(time_depth, aes(x = time_of_day, y = mean_depth)) +
+  geom_line() +
+  geom_smooth(method = "loess", se = FALSE, color = "red", linetype = "dashed") +
+  theme_minimal()
+```
+
+```{r}
+time_md <- vesuvius %>%
+  select(time, duration_magnitude_md) %>%
+  mutate(time_of_day = round_date(time, unit = "hour")) %>%
+  mutate(time_of_day = as_hms(time_of_day)) %>%
+  group_by(time_of_day) %>%
+  summarise(mean_md = mean(duration_magnitude_md, na.rm = TRUE))
+
+head(time_md)
+```
+
+```{r}
+ggplot(time_md, aes(x = time_of_day, y = mean_md)) +
+  geom_line() +
+  geom_smooth(method = "loess", se = FALSE, color = "red", linetype = "dashed") +
+  theme_minimal()
+```
+
+```{r}
+# Combine time_of_day and md to plot overlay them in one plot
+depth_md <- time_depth %>%
+  left_join(time_md, by = "time_of_day")
+
+head(depth_md)
+summary(depth_md)
+```
+
+```{r}
+# Calculate a scale_factor for plotting
+scale_factor <- max(depth_md$mean_depth, na.rm = TRUE) / max(depth_md$mean_md, na.rm = TRUE)
+
+ggplot(depth_md, aes(x = time_of_day)) +
+  geom_line(aes(y = mean_depth), color = "blue") +
+  geom_smooth(aes(y = mean_depth), method = "loess", se = FALSE, color = "blue", linetype = "dashed") +
+  geom_line(aes(y = mean_md * scale_factor), color = "red") +
+  geom_smooth(aes(y = mean_md * scale_factor), method = "loess", se = FALSE, color = "red", linetype = "dashed") +
+  scale_y_continuous(name = "Mean Depth (km)",
+                     sec.axis = sec_axis(~ . / scale_factor, name = "Mean Duration Magnitude (Md)")) +
+  theme_minimal()
+```
+
+```{r}
+# Reshape data for legend
+long <- depth_md %>%
+  pivot_longer(cols = c(mean_depth, mean_md),
+               names_to = "variable",
+               values_to = "value")
+
+head(long)
+```
+
+```{r}
+# Calculate a scale_factor for plotting
+scale_factor <- max(depth_md$mean_depth, na.rm = TRUE) / max(depth_md$mean_md, na.rm = TRUE)
+
+# Apply scale factor to mean_md values (smaller one)
+long_scaled <- long %>%
+  mutate(scaled_value = if_else(variable == "mean_md", value * scale_factor, value))
+
+head(long_scaled)
+```
+
+```{r}
+# Calculate a scale_factor for plotting
+ggplot(long_scaled, aes(x = time_of_day, y = scaled_value, color = variable)) +
+  geom_line() +
+  geom_smooth(method = "loess", se = FALSE, linetype = "dashed") +
+  scale_y_continuous(
+    name = "Mean Depth (km)",
+    sec.axis = sec_axis(~ . / scale_factor, name = "Mean Duration Magnitude (Md)")
+  ) +
+  scale_color_manual(values = c("mean_depth" = "blue", "mean_md" = "red"),
+                     labels = c("Mean Depth (km)", "Mean Duration Magnitude (Md)")) +
+  labs(x = NULL, color = "Variable") +
+  theme_minimal()
+```
+
+```{r}
+ggsave("depth_duration.png", width = 8, height = 6, dpi = 300, bg = "white")
+```
+
+
