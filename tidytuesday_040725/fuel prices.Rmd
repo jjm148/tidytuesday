@@ -1,0 +1,67 @@
+---
+title: "Fuel Prices"
+author: "JM"
+date: "2025-07-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+weekly_gas_prices <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-07-01/weekly_gas_prices.csv')
+)
+```
+
+```{r}
+head(weekly_gas_prices)
+summary(weekly_gas_prices)
+```
+
+```{r}
+ggplot(weekly_gas_prices, aes(x = date, y = price, color = fuel)) +
+  geom_line() +
+  labs(x = NULL) +
+  theme_minimal()
+```
+
+
+```{r}
+# filter for 2008 recession
+df_recession <- weekly_gas_prices %>%
+  filter(date >= as.Date("2007-01-01") & date <= as.Date("2009-12-31"))
+
+head(df_recession)
+summary(df_recession)
+```
+
+
+```{r}
+ggplot(df_recession, aes(x = date, y = price, color = fuel)) +
+  geom_line() +
+  labs(x = NULL, title = "2008 Recession Fuel Prices") +
+  theme_minimal()
+```
+
+```{r}
+# filter for covid period
+df_covid <- weekly_gas_prices %>%
+  filter(date >= as.Date("2021-01-01") & date <= as.Date("2022-12-31"))
+
+head(df_covid)
+```
+
+```{r}
+ggplot(df_covid, aes(x = date, y = price, color = fuel)) +
+  geom_line() +
+  labs(x = NULL, title = "COVID Fuel Prices") +
+  theme_minimal()
+```
+
+
+
